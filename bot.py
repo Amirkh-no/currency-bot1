@@ -4,7 +4,7 @@ from bs4 import BeautifulSoup
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, CallbackQueryHandler, filters, ContextTypes
 
-TOKEN = "تکن_جدیدت_را_اینجا_بذار"
+TOKEN = "8143466135:AAHiS2kJc5qNi_5AlOIYOjMHU3T8ImLoRVQ"
 
 logging.basicConfig(level=logging.INFO)
 
