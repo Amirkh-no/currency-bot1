@@ -23,16 +23,41 @@ CURRENCIES = {
 }
 
 CRYPTO = {
-    "usdt":  ("تتر 💵",        "tether"),
-    "btc":   ("بیت‌کوین ₿",   "bitcoin"),
-    "eth":   ("اتریوم 🔷",    "ethereum"),
-    "bnb":   ("بایننس کوین 🟡", "binancecoin"),
-    "sol":   ("سولانا 🟣",    "solana"),
-    "xrp":   ("ریپل 🔵",      "ripple"),
-    "doge":  ("دوج‌کوین 🐶",  "dogecoin"),
-    "ada":   ("کاردانو 🔵",   "cardano"),
-    "trx":   ("ترون 🔴",      "tron"),
-    "ton":   ("تون کوین 💎",  "the-open-network"),
+    "usdt":  ("تتر 💵",            "tether"),
+    "btc":   ("بیت‌کوین ₿",       "bitcoin"),
+    "eth":   ("اتریوم 🔷",        "ethereum"),
+    "bnb":   ("بایننس کوین 🟡",   "binancecoin"),
+    "sol":   ("سولانا 🟣",        "solana"),
+    "xrp":   ("ریپل 🔵",          "ripple"),
+    "doge":  ("دوج‌کوین 🐶",      "dogecoin"),
+    "ada":   ("کاردانو 🔵",       "cardano"),
+    "trx":   ("ترون 🔴",          "tron"),
+    "ton":   ("تون کوین 💎",      "the-open-network"),
+}
+
+# کلمات کلیدی که کاربر میتونه تایپ کنه
+KEYWORDS = {
+    "دلار": "dollar", "dollar": "dollar", "usd": "dollar",
+    "یورو": "euro", "euro": "euro", "eur": "euro",
+    "پوند": "pound", "pound": "pound", "gbp": "pound",
+    "درهم": "dirham", "dirهم": "dirham", "aed": "dirham",
+    "لیر": "lira", "لیره": "lira", "try": "lira",
+    "یوان": "yuan", "cny": "yuan",
+    "ین": "yen", "jpy": "yen",
+    "روبل": "ruble", "rub": "ruble",
+    "ریال عربستان": "riyal_sa", "sar": "riyal_sa",
+    "طلا": "gold", "gold": "gold",
+    "سکه": "sekke", "سکه امامی": "sekke",
+    "تتر": "usdt", "tether": "usdt", "usdt": "usdt",
+    "بیتکوین": "btc", "بیت کوین": "btc", "bitcoin": "btc", "btc": "btc",
+    "اتریوم": "eth", "ethereum": "eth", "eth": "eth",
+    "بایننس": "bnb", "bnb": "bnb",
+    "سولانا": "sol", "solana": "sol", "sol": "sol",
+    "ریپل": "xrp", "xrp": "xrp",
+    "دوج": "doge", "دوجکوین": "doge", "dogecoin": "doge", "doge": "doge",
+    "کاردانو": "ada", "ada": "ada",
+    "ترون": "trx", "trx": "trx",
+    "تون": "ton", "ton": "ton",
 }
 
 def get_price(url: str) -> str:
@@ -98,9 +123,53 @@ def make_crypto_keyboard():
     return InlineKeyboardMarkup(buttons)
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    text = "سلام! 👋 به ربات نرخ ارز و کریپتو خوش اومدی 💰\n\nیکی از گزینه‌های زیر رو انتخاب کن:"
+    text = (
+        "سلام! 👋 به ربات نرخ ارز و کریپتو خوش اومدی 💰\n\n"
+        "میتونی اسم ارز رو تایپ کنی، مثلاً:\n"
+        "• دلار، یورو، طلا، سکه\n"
+        "• تتر، بیتکوین، اتریوم\n\n"
+        "یا از دکمه‌های زیر استفاده کن:"
+    )
     if update.message:
         await update.message.reply_text(text, reply_markup=make_main_keyboard())
+
+async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not update.message:
+        return
+
+    text = update.message.text.strip().lower()
+
+    # چک کن کاربر اسم ارز تایپ کرده
+    matched_key = None
+    for keyword, key in KEYWORDS.items():
+        if keyword in text:
+            matched_key = key
+            break
+
+    if matched_key:
+        # ارز رو پیدا کرد
+        if matched_key in CURRENCIES:
+            name, url = CURRENCIES[matched_key]
+            await update.message.reply_text(f"⏳ در حال دریافت نرخ {name}...")
+            price = get_price(url)
+            await update.message.reply_text(
+                f"💱 *{name}*\n\nقیمت: `{price}` ریال\n\n🔄 منبع: tgju.org",
+                parse_mode="Markdown"
+            )
+        elif matched_key in CRYPTO:
+            name, coin_id = CRYPTO[matched_key]
+            await update.message.reply_text(f"⏳ در حال دریافت قیمت {name}...")
+            price = get_crypto_price(coin_id)
+            await update.message.reply_text(
+                f"🪙 *{name}*\n\nقیمت: `{price}`\n\n🔄 منبع: CoinGecko",
+                parse_mode="Markdown"
+            )
+    else:
+        await update.message.reply_text(
+            "از دکمه‌های زیر استفاده کن یا اسم ارز رو بنویس 👇\n"
+            "مثال: دلار | تتر | بیتکوین | طلا",
+            reply_markup=make_main_keyboard()
+        )
 
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -108,10 +177,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     key = query.data
 
     if key == "back":
-        await query.edit_message_text(
-            "یکی از گزینه‌های زیر رو انتخاب کن:",
-            reply_markup=make_main_keyboard()
-        )
+        await query.edit_message_text("یکی از گزینه‌های زیر رو انتخاب کن:", reply_markup=make_main_keyboard())
 
     elif key == "menu_currency":
         await query.edit_message_text("💱 کدوم ارز؟", reply_markup=make_currency_keyboard())
@@ -136,7 +202,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             url = f"https://api.coingecko.com/api/v3/simple/price?ids={ids}&vs_currencies=usd,irt"
             resp = requests.get(url, timeout=15)
             data = resp.json()
-            for key2, (name, coin_id) in CRYPTO.items():
+            for k, (name, coin_id) in CRYPTO.items():
                 if coin_id in data:
                     usd = data[coin_id].get("usd", 0)
                     irt = data[coin_id].get("irt", 0)
@@ -154,8 +220,10 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             name, url = CURRENCIES[k]
             await query.edit_message_text(f"⏳ در حال دریافت نرخ {name}...")
             price = get_price(url)
-            text = f"💱 *{name}*\n\nقیمت: `{price}` ریال\n\n🔄 منبع: tgju.org"
-            await query.edit_message_text(text, parse_mode="Markdown", reply_markup=make_currency_keyboard())
+            await query.edit_message_text(
+                f"💱 *{name}*\n\nقیمت: `{price}` ریال\n\n🔄 منبع: tgju.org",
+                parse_mode="Markdown", reply_markup=make_currency_keyboard()
+            )
 
     elif key.startswith("cr_"):
         k = key[3:]
@@ -163,12 +231,10 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             name, coin_id = CRYPTO[k]
             await query.edit_message_text(f"⏳ در حال دریافت قیمت {name}...")
             price = get_crypto_price(coin_id)
-            text = f"🪙 *{name}*\n\nقیمت: `{price}`\n\n🔄 منبع: CoinGecko"
-            await query.edit_message_text(text, parse_mode="Markdown", reply_markup=make_crypto_keyboard())
-
-async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if update.message:
-        await update.message.reply_text("از دکمه‌های زیر استفاده کن 👇", reply_markup=make_main_keyboard())
+            await query.edit_message_text(
+                f"🪙 *{name}*\n\nقیمت: `{price}`\n\n🔄 منبع: CoinGecko",
+                parse_mode="Markdown", reply_markup=make_crypto_keyboard()
+            )
 
 def main():
     app = ApplicationBuilder().token(TOKEN).build()
